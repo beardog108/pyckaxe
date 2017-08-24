@@ -1,4 +1,4 @@
-Pyckaxe
+# Pyckaxe
 
 a simple Python script demonstrating how Tmux can be used to create "vanilla plugins" in Minecraft. 
 
