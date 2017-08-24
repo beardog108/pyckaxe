@@ -2,24 +2,30 @@
 
 '''
 Pyckaxe, a simple Python script demonstrating use of Tmux for Minecraft "vanilla plugins". Not really meant for use yet.
-    Copyright (C) 2017 Kevin Froman
+	Copyright (C) 2017 Kevin Froman https://ChaosWebs.net/
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 '''
 
-import libtmux, time, signal, sys, random, requests, os, sqlite3, time, datetime, nbt
+import libtmux, time, signal, sys, random, requests, os, sqlite3, time, datetime, nbt, configparser
+
+def logger(data):
+	log = False
+	if log:
+		print(data)
+	return
 
 def getPlayerData(data, kind, player):
 	retData = ''
@@ -58,21 +64,21 @@ def substring_after(s, delim):
 	return s.partition(delim)[2]
 
 def find_between( s, first, last ):
-    try:
-        start = s.index( first ) + len( first )
-        end = s.index( last, start )
-        return s[start:end]
-    except ValueError:
-        return ""
+	try:
+		start = s.index( first ) + len( first )
+		end = s.index( last, start )
+		return s[start:end]
+	except ValueError:
+		return ""
 
 def signal_handler(signal, frame):
-        doCmd('say Pyckaxe 0.1 shutting down')
-        sys.exit(0)
+		doCmd('say Pyckaxe 0.1 shutting down')
+		sys.exit(0)
 
 def getUUID(player):
 	try:
 		UUIDCache[player]
-		print('loaded uuid from cache')
+		logger('loaded uuid from cache')
 		uuid = UUIDCache[player]
 	except KeyError:
 		uuid = requests.get('https://api.mojang.com/users/profiles/minecraft/' + player).json()['id']
@@ -94,7 +100,7 @@ def claimKit(wantedKit):
 
 signal.signal(signal.SIGINT, signal_handler)
 server = libtmux.Server()
-session = server.get_by_id('$2')
+session = server.list_sessions()[-1]
 
 player = ''
 message = ''
@@ -103,7 +109,7 @@ guesses = 0
 
 userDB = ''
 
-moderators = ['Haknak']
+moderators = []
 
 DBPath = 'player-data/players/'
 
@@ -129,6 +135,27 @@ spawnCords = '57.325 69.51 -80.401'
 # Define kits
 kits = Kits()
 
+
+cfgFile = 'pyckaxe-config.cfg'
+
+config = configparser.ConfigParser()
+
+config['SERVER'] = {'name': 'Example Server', 'moderators': 'Notch', 'loop-speed': '0.5', 'enabled-plugins': ''}
+
+
+if not os.path.exists(cfgFile):
+	try:
+		with open(cfgFile, 'w') as configfile:
+			config.write(configfile)
+	except PermissionError:
+		print('Unable to load config, no permission.')
+		sys.exit(1)
+try:
+	config.read(cfgFile)
+except PermissionError:
+	print('Unable to load config, no permission.')
+	sys.exit(1)
+
 try:
 	while True:
 		spamClearLoopCount = spamClearLoopCount + 1
@@ -136,7 +163,7 @@ try:
 		player = ''
 		message = ''
 		loop = loop + 1
-		time.sleep(0.5)
+		time.sleep(int(config['loop-speed']))
 		now = datetime.datetime.now()
 		now = str(now.hour) + ':' + str(now.minute) + ':' + str(now.second + 1)
 		if tpDelayLoopCount > tpDelayLoops:
@@ -147,7 +174,7 @@ try:
 			spawnQueue.clear()
 			tpDelayLoopCount = 0
 		if spamClearLoopCount > spamClearLoops:
-			print('cleared spam loop' + str(random.randint(1, 1000)))
+			logger('cleared spam loop' + str(random.randint(1, 1000)))
 			spamClearLoopCount = 0
 			antiSpam.clear()
 		with open('mc.log', 'rb') as log:
@@ -159,7 +186,7 @@ try:
 				player = find_between(last, '<', '>')
 				message = substring_after(last, '>').lstrip()
 			else:
-				print('Possible attack: ' + last)
+				logger('Possible attack: ' + last)
 			if player != '' and message != '':
 				try:
 					antiSpam[player]
@@ -205,12 +232,17 @@ try:
 					for row in c.execute('SELECT SECRET FROM Player where NAME=?', (selectData,)):
 						doCmd('say ' + player + '\'s secret code is ' + row[0])
 				elif message == '.test':
-					print(getPlayerData('balance', 'db', player))
+					logger(getPlayerData('balance', 'db', player))
+				elif message.startswith('.smite '):
+					if player in moderators:
+						doCmd('execute @e[name=' + message.split(' ')[1] + '] ~ ~ ~ /summon Lightning_Bolt')
+					else:
+						doCmd('say ' + player + ' is not a moderator!')
 				elif message.startswith('.kick '):
 					if player in moderators:
 						doCmd('kick ' + message.split(' ')[1])
 					else:
-						doCmd('say ' + player + ' is not a staff member!')
+						doCmd('say ' + player + ' is not a moderator!')
 				elif message == '.spawn':
 					doCmd('msg ' + player + ' Teleporting to spawn soon...')
 					#spawnQueue[player] = true
