@@ -163,7 +163,7 @@ try:
 		player = ''
 		message = ''
 		loop = loop + 1
-		time.sleep(int(config['SERVER']['loop-speed']))
+		time.sleep(float(config['SERVER']['loop-speed']))
 		now = datetime.datetime.now()
 		now = str(now.hour) + ':' + str(now.minute) + ':' + str(now.second + 1)
 		if tpDelayLoopCount > tpDelayLoops:
