@@ -100,7 +100,7 @@ def claimKit(wantedKit):
 
 signal.signal(signal.SIGINT, signal_handler)
 server = libtmux.Server()
-session = server.list_sessions()[-1]
+session = server.list_sessions()[3]
 
 player = ''
 message = ''

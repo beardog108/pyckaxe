@@ -1,0 +1,8 @@
+logs/*
+mc.log
+tmuxid.txt
+mc.jar
+*.json
+__pycache__/*
+world/*
+crash-reports/*
