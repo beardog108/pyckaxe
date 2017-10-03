@@ -21,11 +21,7 @@ def getPlugins(config):
         plugins.append({"name": i, "info": info})
     return plugins
 
-def events(event, data, config):
-    try:
-        command = sys.argv[1]
-    except IndexError:
-        command = None
+def events(event, data, config, player=None):
     retData = ''
     ranPlugins = []
     for i in getPlugins(config):
@@ -36,19 +32,15 @@ def events(event, data, config):
                     retData = retData + plugin.startup(data)
 
                 elif event == 'commands':
-                    if command == i['name']:
-                        plugin.Commands.commands(*sys.argv)
-                        retData = True
-                    else:
-                        break
+                    plugin.Commands.commands(data, config, player)
+                    retData = True
                 else:
                     print('Attempted to call unknown event: ' + event)
             except TypeError:
                 pass
-
             except AttributeError:
                 pass
-            ranPlugins.append(plugin.myName())
+            ranPlugins.append(i)
     if retData == '':
         retData = data
     return retData

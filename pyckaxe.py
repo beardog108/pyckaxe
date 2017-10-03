@@ -28,7 +28,7 @@ tmuxid = sys.argv[1]
 doDelay = sys.argv[2]
 
 if doDelay == 'false':
-	time.sleep(5)
+	time.sleep(10)
 
 def logger(data, config):
 	if config['SERVER']['console log'] == 'true':
@@ -94,6 +94,12 @@ def getUUID(player):
 		UUIDCache[player] = uuid
 	return uuid
 
+def isModerator(player):
+	if player in config['SERVER']['moderators'].split(' '):
+		return True
+	else:
+		return False
+
 signal.signal(signal.SIGINT, signal_handler)
 server = libtmux.Server()
 session = server.get_by_id('$' + tmuxid)
@@ -111,7 +117,6 @@ DBPath = 'player-data/players/'
 
 doCmd('say Pyckaxe 0.1 Initialized')
 
-UUIDCache = {}
 
 secret = ''
 now = 0
@@ -121,14 +126,7 @@ cfgFile = 'pyckaxe-config.cfg'
 
 config = configparser.ConfigParser()
 
-config['SERVER'] = {'name': 'Example Server', 'moderators': 'Notch', 'loop-speed': '0.5', 'enabled-plugins': '', 'console log': 'true'}
-
-last = ''
-
-lastMsg = ''
-
-newPlayerCheckLoops = 10 # after how many loops we should check for new players... event driven doesn't work for This
-newPlayerLoopCount = 0
+config['SERVER'] = {'name': 'Example Server', 'moderators': 'Notch beardoge', 'loop-speed': '0.5', 'new player check timer': '100', 'enabled-plugins': '', 'console log': 'true'}
 
 
 if not os.path.exists(cfgFile):
@@ -143,6 +141,17 @@ try:
 except PermissionError:
 	print('Unable to load config, no permission.')
 	sys.exit(1)
+
+
+last = ''
+
+lastMsg = ''
+
+UUIDCache = {}
+
+newPlayerCheckLoops = int(config['SERVER']['new player check timer']) # after how many loops we should check for new players... event driven doesn't work for This
+newPlayerLoopCount = 0
+pluginLoader.events('startup', '', config)
 
 try:
 	while True:
@@ -159,6 +168,10 @@ try:
 				newPlayerLoopCount = 0
 		with open('mc.log', 'rb') as log:
 			last = log.readlines()[-1].decode().replace('\n', '')
+			# should be starts with?
+			if last == '[Server Shutdown Thread/INFO]: Saving players':
+				print('Server shutdown. exiting.')
+				sys.exit(0)
 			serverTime = last.split(']')[0].replace('[', '')
 			last = substring_after(last, '[Server thread/INFO]: ')
 			if not last.startswith('*'):
@@ -166,6 +179,7 @@ try:
 				message = substring_after(last, '>').lstrip()
 				if lastMsg != message:
 					logger(player + ': ' + message, config)
+					pluginLoader.events('commands', message, config, player)
 					lastMsg = message
 			else:
 				logger('Possible attack: ' + last)
