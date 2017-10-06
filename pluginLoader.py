@@ -4,6 +4,8 @@ import os, imp, sys
 pluginFolder = 'pyckaxe-plugins/'
 MainModule = "__init__"
 
+debug = False
+
 def loadPlugin(plugin):
     # Loads a plugin
     return imp.load_module(MainModule, *plugin["info"])
@@ -34,8 +36,11 @@ def events(event, data, config, player=None):
                 elif event == 'commands':
                     plugin.Commands.commands(data, config, player)
                     retData = True
+                elif event == 'leave':
+                    plugin.leave(player, data) #username, time
                 else:
-                    print('Attempted to call unknown event: ' + event)
+                    if not debug:
+                        print('Attempted to call unknown event: ' + event)
             except TypeError:
                 pass
             except AttributeError:
